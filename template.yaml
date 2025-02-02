@@ -32,6 +32,39 @@ Globals:
         S3_BUCKET_NAME: !Ref S3BucketName
 
 Resources:
+  DevApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+      CorsConfiguration:
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Amz-Date
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowOrigins:
+          - 'https://d2g7e9sf0x8kns.cloudfront.net'
+          - 'http://localhost:3000'  # Also allowing localhost for development
+        MaxAge: 300
+        AllowCredentials: true
+      Auth:
+        DefaultAuthorizer: LambdaTokenAuthorizer
+        Authorizers:
+          LambdaTokenAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionInvokeRole: !GetAtt AuthorizerRole.Arn
+            AuthorizerPayloadFormatVersion: "2.0"
+            Identity:
+              Headers:
+                - Authorization
+
   AuthServerFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -44,22 +77,29 @@ Resources:
             BucketName: !Ref S3BucketName
       Events:
         Signup:
-          Type: Api
+          Type: HttpApi
           Properties:
+            ApiId: !Ref DevApi
             Path: /signup
             Method: POST
+            Auth:
+              Authorizer: NONE
         Login:
-          Type: Api
+          Type: HttpApi
           Properties:
+            ApiId: !Ref DevApi
             Path: /login
             Method: POST
+            Auth:
+              Authorizer: NONE
         UpdateProfileImage:
-          Type: Api
+          Type: HttpApi
           Properties:
+            ApiId: !Ref DevApi
             Path: /profile-image
             Method: PUT
             Auth:
-              Authorizer: AuthorizerFunction
+              Authorizer: LambdaTokenAuthorizer
 
   AuthorizerFunction:
     Type: AWS::Serverless::Function
@@ -70,6 +110,20 @@ Resources:
         Variables:
           JWT_SECRET: !Ref JWTSecret
 
+  AuthorizerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+# Rest of the template remains the same...
   UsersTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -100,7 +154,7 @@ Resources:
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Value: !Sub "https://${DevApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
   UserTableArn:
     Description: ARN of the DynamoDB users table
     Value: !GetAtt UsersTable.Arn
