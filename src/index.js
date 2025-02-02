@@ -5,7 +5,7 @@ const { verifyToken } = require('./middleware/auth');
 exports.handler = async (event, context) => {
   try {
     console.log('Event:', JSON.stringify(event));
-    
+
     // CORS headers
     const headers = {
       'Access-Control-Allow-Origin': '*',
@@ -14,10 +14,16 @@ exports.handler = async (event, context) => {
     };
 
     // Route handling based on path and method
-    const { path, httpMethod } = event;
-    
+    let { path, method } = event.requestContext.http;
+
+    //remove /dev/from path
+    path = path.replace('/dev', '');
+
+    console.log('Path:', path);
+    console.log('Method:', method);
+
     // Handle preflight requests
-    if (httpMethod === 'OPTIONS') {
+    if (method === 'OPTIONS') {
       return {
         statusCode: 200,
         headers: {
@@ -30,7 +36,7 @@ exports.handler = async (event, context) => {
     }
 
     let response;
-    
+
     // Check if route requires authentication
     const protectedRoutes = ['/profile', '/profile-image'];
     if (protectedRoutes.includes(path)) {
@@ -40,18 +46,18 @@ exports.handler = async (event, context) => {
 
     // Route handling
     switch (true) {
-      case path === '/signup' && httpMethod === 'POST':
+      case path === '/signup' && method === 'POST':
         response = await authRoutes.signup(event);
         break;
-        
-      case path === '/login' && httpMethod === 'POST':
+
+      case path === '/login' && method === 'POST':
         response = await authRoutes.login(event);
         break;
-        
-      case path === '/profile-image' && httpMethod === 'PUT':
+
+      case path === '/profile-image' && method === 'PUT':
         response = await authRoutes.updateProfileImage(event);
         break;
-        
+
       default:
         response = {
           statusCode: 404,
@@ -66,7 +72,7 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Error:', error);
-    
+
     if (error.message === 'Unauthorized') {
       return {
         statusCode: 401,
@@ -78,7 +84,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         message: 'Internal server error',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       })
