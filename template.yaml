@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Authentication server with authorizer function
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  JWTSecret:
+    Type: String
+    NoEcho: true
+  DynamoDBTableName:
+    Type: String
+    Default: users-table
+  S3BucketName:
+    Type: String
+    Description: S3 bucket for profile images
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    MemorySize: 256
+    Timeout: 30
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        JWT_SECRET: !Ref JWTSecret
+        DYNAMODB_TABLE: !Ref DynamoDBTableName
+        S3_BUCKET_NAME: !Ref S3BucketName
+
+Resources:
+  AuthServerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/index.handler
+      CodeUri: ./
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTableName
+        - S3CrudPolicy:
+            BucketName: !Ref S3BucketName
+      Events:
+        Signup:
+          Type: Api
+          Properties:
+            Path: /signup
+            Method: POST
+        Login:
+          Type: Api
+          Properties:
+            Path: /login
+            Method: POST
+        UpdateProfileImage:
+          Type: Api
+          Properties:
+            Path: /profile-image
+            Method: PUT
+            Auth:
+              Authorizer: AuthorizerFunction
+
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/authorizer.handler
+      CodeUri: ./
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JWTSecret
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DynamoDBTableName
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  ProfileImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET, PUT, POST]
+            AllowedOrigins: ["*"]
+            MaxAge: 3000
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+  UserTableArn:
+    Description: ARN of the DynamoDB users table
+    Value: !GetAtt UsersTable.Arn
+  ProfileImagesBucketName:
+    Description: Name of the S3 bucket for profile images
+    Value: !Ref ProfileImagesBucket
