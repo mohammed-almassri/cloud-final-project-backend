@@ -54,22 +54,25 @@ Resources:
           - 'http://localhost:3000'  # Also allowing localhost for development
         MaxAge: 300
         AllowCredentials: true
-      Auth:
-        DefaultAuthorizer: LambdaTokenAuthorizer
-        Authorizers:
-          LambdaTokenAuthorizer:
-            FunctionArn: !GetAtt AuthorizerFunction.Arn
-            FunctionInvokeRole: !GetAtt AuthorizerRole.Arn
-            AuthorizerPayloadFormatVersion: "2.0"
-            Identity:
-              Headers:
-                - Authorization
+      # Auth:
+      #   DefaultAuthorizer: LambdaTokenAuthorizer
+      #   Authorizers:
+      #     LambdaTokenAuthorizer:
+      #       FunctionArn: !GetAtt AuthorizerFunction.Arn
+      #       FunctionInvokeRole: !GetAtt AuthorizerRole.Arn
+      #       AuthorizerPayloadFormatVersion: "2.0"
+      #       Identity:
+      #         Headers:
+      #           - Authorization
 
   AuthServerFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: src/index.handler
       CodeUri: ./
+      Environment:
+        Variables:
+          JWT_SECRET: !Ref JWTSecret
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTableName
@@ -82,46 +85,46 @@ Resources:
             ApiId: !Ref DevApi
             Path: /signup
             Method: POST
-            Auth:
-              Authorizer: NONE
+            # Auth:
+            #   Authorizer: NONE
         Login:
           Type: HttpApi
           Properties:
             ApiId: !Ref DevApi
             Path: /login
             Method: POST
-            Auth:
-              Authorizer: NONE
+            # Auth:
+            #   Authorizer: NONE
         UpdateProfileImage:
           Type: HttpApi
           Properties:
             ApiId: !Ref DevApi
             Path: /profile-image
             Method: PUT
-            Auth:
-              Authorizer: LambdaTokenAuthorizer
+            # Auth:
+            #   Authorizer: LambdaTokenAuthorizer
 
-  AuthorizerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: src/authorizer.handler
-      CodeUri: ./
-      Environment:
-        Variables:
-          JWT_SECRET: !Ref JWTSecret
+  # AuthorizerFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     Handler: src/authorizer.handler
+  #     CodeUri: ./
+  #     Environment:
+  #       Variables:
+  #         JWT_SECRET: !Ref JWTSecret
 
-  AuthorizerRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: apigateway.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  # AuthorizerRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: apigateway.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
 # Rest of the template remains the same...
   UsersTable:
