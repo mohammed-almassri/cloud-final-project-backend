@@ -199,7 +199,6 @@ const authRoutes = {
             const { key } = JSON.parse(event.body);
 
             const imageUrl = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${key}`;
-            console.log('imageUrl', imageUrl);
             const params = {
                 TableName: process.env.DYNAMODB_TABLE,
                 Key: {

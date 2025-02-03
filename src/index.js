@@ -4,8 +4,6 @@ const { verifyToken } = require('./middleware/auth');
 
 exports.handler = async (event, context) => {
   try {
-    console.log('Event:', JSON.stringify(event));
-
     // CORS headers
     const headers = {
       'Access-Control-Allow-Origin': '*',
@@ -18,9 +16,6 @@ exports.handler = async (event, context) => {
 
     //remove /dev/from path
     path = path.replace('/dev', '');
-
-    console.log('Path:', path);
-    console.log('Method:', method);
 
     // Handle preflight requests
     if (method === 'OPTIONS') {

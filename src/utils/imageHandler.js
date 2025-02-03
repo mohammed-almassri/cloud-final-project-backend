@@ -17,7 +17,7 @@ const processImage = async (base64Image, email) => {
 
     return `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${key}`;
   } catch (error) {
-    console.log('Image processing error:', error);
+    console.error('Image processing error:', error);
     throw new Error('Failed to process image');
   }
 };
