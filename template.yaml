@@ -51,6 +51,7 @@ Resources:
           - X-Amz-Security-Token
         AllowOrigins:
           - 'https://d2g7e9sf0x8kns.cloudfront.net'
+          - 'https://d2dg46q8mb4ycg.cloudfront.net'
           - 'http://localhost:3000'  # Also allowing localhost for development
         MaxAge: 300
         AllowCredentials: true
@@ -70,6 +71,11 @@ Resources:
     Properties:
       Handler: src/index.handler
       CodeUri: ./
+      MemorySize: 1024
+      Timeout: 30
+      # AutoPublishAlias: live
+      # ProvisionedConcurrencyConfig:
+        # ProvisionedConcurrentExecutions: 2
       Environment:
         Variables:
           JWT_SECRET: !Ref JWTSecret
