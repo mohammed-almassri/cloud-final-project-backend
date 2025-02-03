@@ -1,7 +1,7 @@
 const { hashPassword, comparePasswords } = require('../utils/password');
 const { generateToken } = require('../utils/token');
 const { processImage } = require('../utils/imageHandler');
-const { dynamoDb } = require('../config/dynamodb');
+const { dynamoDb, s3 } = require('../config/dynamodb');
 
 const authRoutes = {
     signup: async (event) => {
@@ -129,27 +129,16 @@ const authRoutes = {
 
     updateProfileImage: async (event) => {
         try {
-
-            console.log('user', event.user);
-            if (!event.user || !event.user.email) {
-                return {
-                    statusCode: 401,
-                    body: JSON.stringify({
-                        message: 'Unauthorized - User not authenticated'
-                    })
-                };
-            }
-
             const { email } = event.user;
             const { profileImage } = JSON.parse(event.body);
-            console.log('profileImage', profileImage.length, profileImage.substring(0, 50));
-            const timestamp = new Date().toISOString();
-
+            const timestamp = event.user.timestamp;
             const imageUrl = await processImage(profileImage, email);
-
             await dynamoDb.update({
                 TableName: process.env.DYNAMODB_TABLE,
-                Key: { "email": email, timestamp: timestamp },
+                Key: {
+                    "email": email,
+                    timestamp: timestamp  // Use original timestamp
+                },
                 UpdateExpression: 'set profileImage = :imageUrl',
                 ExpressionAttributeValues: {
                     ':imageUrl': imageUrl
@@ -172,7 +161,72 @@ const authRoutes = {
                 })
             };
         }
-    }
+    },
+    // Generate signed URL for S3 upload
+    getUploadUrl: async (event) => {
+        try {
+            const { email } = event.user;
+            const fileType = event.queryStringParameters?.fileType || 'image/jpeg';
+
+            const key = `${email}/${Date.now()}.${fileType.split('/')[1]}`;
+
+            const params = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: key,
+                ContentType: fileType,
+                Expires: 300, // URL expires in 5 minutes
+                ACL: 'public-read'
+            };
+
+            const uploadUrl = await s3.getSignedUrlPromise('putObject', params);
+
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    uploadUrl,
+                    key
+                })
+            };
+        } catch (error) {
+            console.error('Error generating upload URL:', error);
+            throw error;
+        }
+    },
+    // Save the S3 URL to user's profile
+    saveProfileUrl: async (event) => {
+        try {
+            const { email } = event.user;
+            const { key } = JSON.parse(event.body);
+
+            const imageUrl = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${key}`;
+            console.log('imageUrl', imageUrl);
+            const params = {
+                TableName: process.env.DYNAMODB_TABLE,
+                Key: {
+                    email: email,
+                    timestamp: event.user.timestamp // Assuming you store timestamp in user object
+                },
+                UpdateExpression: 'set profileImage = :imageUrl',
+                ExpressionAttributeValues: {
+                    ':imageUrl': imageUrl
+                },
+                ReturnValues: 'ALL_NEW'
+            };
+
+            await dynamodb.update(params).promise();
+
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    message: 'Profile image updated successfully',
+                    imageUrl
+                })
+            };
+        } catch (error) {
+            console.error('Error saving profile URL:', error);
+            throw error;
+        }
+    },
 };
 
 module.exports = authRoutes;

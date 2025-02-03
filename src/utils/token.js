@@ -5,7 +5,8 @@ const generateToken = (user) => {
     return jwt.sign(
       {
         email: user.email,
-        name: user.name
+        name: user.name,
+        timestamp: user.timestamp
       },
       process.env.JWT_SECRET,
       {

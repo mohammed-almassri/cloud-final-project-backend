@@ -78,6 +78,14 @@ Resources:
             TableName: !Ref DynamoDBTableName
         - S3CrudPolicy:
             BucketName: !Ref S3BucketName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:PutObjectAcl
+              Resource:
+                - !Sub '${ProfileImagesBucket.Arn}/*'
       Events:
         Signup:
           Type: HttpApi
@@ -95,6 +103,18 @@ Resources:
             Method: POST
             # Auth:
             #   Authorizer: NONE
+        GetUploadUrl:           # New endpoint
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DevApi
+            Path: /upload-url
+            Method: GET
+        SaveProfileUrl:         # New endpoint
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DevApi
+            Path: /profile-url
+            Method: PUT
         UpdateProfileImage:
           Type: HttpApi
           Properties:
@@ -147,12 +167,35 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref S3BucketName
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter  # This enables ACLs
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders: ["*"]
             AllowedMethods: [GET, PUT, POST]
             AllowedOrigins: ["*"]
             MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+  
+  ProfileImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProfileImagesBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: 
+              - s3:GetObject
+              - s3:PutObject
+            Resource: !Sub '${ProfileImagesBucket.Arn}/*'
 
 Outputs:
   ApiUrl:

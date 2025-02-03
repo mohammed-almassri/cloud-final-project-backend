@@ -38,7 +38,7 @@ exports.handler = async (event, context) => {
     let response;
 
     // Check if route requires authentication
-    const protectedRoutes = ['/profile', '/profile-image'];
+    const protectedRoutes = ['/profile', '/profile-image', '/upload-url', '/profile-url'];
     if (protectedRoutes.includes(path)) {
       const user = await verifyToken(event);
       event.user = user; // Attach user to event object
@@ -56,6 +56,14 @@ exports.handler = async (event, context) => {
 
       case path === '/profile-image' && method === 'PUT':
         response = await authRoutes.updateProfileImage(event);
+        break;
+
+      case path === '/upload-url' && method === 'GET':
+        response = await authRoutes.getUploadUrl(event);
+        break;
+
+      case path === '/profile-url' && method === 'PUT':
+        response = await authRoutes.saveProfileUrl(event);
         break;
 
       default:

@@ -1,10 +1,10 @@
 version = 0.1
 [default.deploy.parameters]
-stack_name = "sam-app"
+stack_name = "cloud-final-project-backend"
 resolve_s3 = true
-s3_prefix = "sam-app"
+s3_prefix = "cloud-final-project-backend"
 region = "us-east-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "Environment=\"dev\" DynamoDBTableName=\"users-table\" S3BucketName=\"\""
+parameter_overrides = "Environment=\"dev\" DynamoDBTableName=\"users-table\" S3BucketName=\"cloud-project-final-bucket-2\""
 image_repositories = []
