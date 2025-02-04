@@ -48,10 +48,13 @@ const authRoutes = {
                 Item: user
             }).promise();
 
+            const token = generateToken(user);
+
             return {
                 statusCode: 201,
                 body: JSON.stringify({
                     message: 'User created successfully',
+                    token,
                     user: {
                         email: user.email,
                         name: user.name,
